@@ -172,9 +172,17 @@ export default function WordOfDayTabScreen() {
       const statusSubscription = player.addListener('statusChange', (status) => {
         if (status.status === 'readyToPlay' && isPlaying) {
           playVideo();
+          // Set a timer based on video duration to detect end
+          if (player.duration && player.duration > 0) {
+            setTimeout(() => {
+              console.log('Video timer ended - advancing slide');
+              setVideoEnded(true);
+            }, (player.duration * 1000) + 500); // Add 500ms buffer
+          }
         }
         if (status.status === 'idle' && status.error === null) {
           // Video finished playing
+          console.log('Video ended - status change to idle');
           setVideoEnded(true);
         }
       });
