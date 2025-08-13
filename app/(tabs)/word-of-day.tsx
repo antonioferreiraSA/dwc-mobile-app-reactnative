@@ -56,6 +56,8 @@ export default function WordOfDayTabScreen() {
   const player = useVideoPlayer(videoSource, (player) => {
     player.loop = false;
     player.muted = isMuted;
+    player.allowsExternalPlayback = false;
+    player.showNowPlayingNotification = false;
   });
 
   const SLIDE_DURATION = 5000; // 5 seconds per slide
@@ -157,20 +159,32 @@ export default function WordOfDayTabScreen() {
 
   useEffect(() => {
     if (player && currentSlide?.type === 'video') {
-      const subscription = player.addListener('playbackStatusUpdate', (status) => {
-        if (status.status === 'readyToPlay') {
-          player.play();
+      // Auto-play when video is ready
+      const playVideo = async () => {
+        try {
+          await player.play();
+        } catch (error) {
+          console.log('Video play error:', error);
         }
-        if (status.status === 'idle' && status.reasonForWaitingToPlay === null) {
+      };
+
+      // Listen for status changes
+      const statusSubscription = player.addListener('statusChange', (status) => {
+        if (status.status === 'readyToPlay' && isPlaying) {
+          playVideo();
+        }
+        if (status.status === 'idle' && status.error === null) {
+          // Video finished playing
           setVideoEnded(true);
         }
       });
+
       
       return () => {
-        subscription?.remove();
+        statusSubscription?.remove();
       };
     }
-  }, [player, currentSlide]);
+  }, [player, currentSlide, isPlaying]);
 
   const renderSlideContent = () => {
     if (!currentSlide) return null;
@@ -209,6 +223,8 @@ export default function WordOfDayTabScreen() {
             allowsPictureInPicture={false}
             showsTimecodes={false}
             requiresLinearPlayback={true}
+            contentFit="cover"
+            nativeControls={false}
           />
           <View style={styles.videoOverlay}>
             <Text style={styles.videoVerseText}>"{currentSlide.verse}"</Text>
