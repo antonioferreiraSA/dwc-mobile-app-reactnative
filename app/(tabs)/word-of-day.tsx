@@ -303,12 +303,7 @@ export default function WordOfDayTabScreen() {
           activeOpacity={1}
         />
 
-        {/* Slide counter */}
-        <View style={styles.slideCounter}>
-          <Text style={styles.slideCounterText}>
-            {currentIndex + 1} / {allSlides.length}
-          </Text>
-        </View>
+
       </View>
     </View>
   );
@@ -443,12 +438,14 @@ const styles = StyleSheet.create({
   },
   imageOverlay: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 120,
     left: 0,
     right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     padding: 32,
     alignItems: 'center',
+    borderRadius: 16,
+    marginHorizontal: 16,
   },
   imageVerseText: {
     color: '#FFFFFF',
@@ -487,13 +484,15 @@ const styles = StyleSheet.create({
   },
   videoOverlay: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 120,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     padding: 32,
     alignItems: 'center',
     zIndex: 1000,
+    borderRadius: 16,
+    marginHorizontal: 16,
   },
   videoVerseText: {
     color: '#FFFFFF',
@@ -524,18 +523,5 @@ const styles = StyleSheet.create({
     bottom: 100,
     width: screenWidth * 0.3,
   },
-  slideCounter: {
-    position: 'absolute',
-    bottom: 50,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  slideCounterText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+
 });
