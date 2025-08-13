@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, Linking, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, TextInput, Modal } from 'react-native';
 import { Heart, Target, Users, Building, Globe, Zap, Info, Shield } from 'lucide-react-native';
 import { useGiving } from '@/hooks/useGiving';
 import { useAuth } from '@/hooks/useAuth';
 import { createPayFastData, generatePayFastForm, formatCurrency } from '@/utils/payfast';
+import PayFastWebView from '@/components/PayFastWebView';
 
 interface GivingCategory {
   id: string;
@@ -60,6 +61,10 @@ export default function GivingScreen() {
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customAmountText, setCustomAmountText] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
+  
+  // PayFast WebView state
+  const [showPaymentWebView, setShowPaymentWebView] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState('');
   const { user } = useAuth();
 
   const amounts = [50, 100, 250, 500, 1000, 2500];
@@ -87,6 +92,39 @@ export default function GivingScreen() {
   const handleCustomAmountCancel = () => {
     setCustomAmountText('');
     setShowCustomInput(false);
+  };
+
+  // PayFast WebView handlers
+  const handlePaymentSuccess = (paymentId?: string) => {
+    setShowPaymentWebView(false);
+    setPaymentUrl('');
+    Alert.alert(
+      'Payment Successful! 🎉',
+      `Thank you for your donation to ${selectedCategory.title}. ${paymentId ? `Payment ID: ${paymentId}` : ''}`,
+      [{ text: 'OK', onPress: () => {
+        // Reset form
+        setSelectedAmount(null);
+        setCustomAmountText('');
+        setIsRecurring(false);
+      }}]
+    );
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPaymentWebView(false);
+    setPaymentUrl('');
+    Alert.alert('Payment Cancelled', 'Your payment was cancelled. No charges were made.');
+  };
+
+  const handlePaymentError = (error: string) => {
+    setShowPaymentWebView(false);
+    setPaymentUrl('');
+    Alert.alert('Payment Error', error);
+  };
+
+  const handlePaymentClose = () => {
+    setShowPaymentWebView(false);
+    setPaymentUrl('');
   };
 
   const handleDonate = async () => {
@@ -130,12 +168,13 @@ export default function GivingScreen() {
         return;
       }
 
-      const paymentUrl = await generatePayFastForm(paymentData, passphrase);
-      console.log('Generated PayFast URL:', paymentUrl);
+      const generatedPaymentUrl = await generatePayFastForm(paymentData, passphrase);
+      console.log('Generated PayFast URL:', generatedPaymentUrl);
 
-      if (paymentUrl) {
-        console.log('Opening PayFast URL...');
-        await Linking.openURL(paymentUrl);
+      if (generatedPaymentUrl) {
+        console.log('Opening PayFast WebView...');
+        setPaymentUrl(generatedPaymentUrl);
+        setShowPaymentWebView(true);
       } else {
         Alert.alert('Error', 'Failed to generate payment URL');
       }
@@ -333,6 +372,16 @@ export default function GivingScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* PayFast WebView for in-app payments */}
+      <PayFastWebView
+        visible={showPaymentWebView}
+        paymentUrl={paymentUrl}
+        onClose={handlePaymentClose}
+        onSuccess={handlePaymentSuccess}
+        onCancel={handlePaymentCancel}
+        onError={handlePaymentError}
+      />
     </View>
   );
 }
