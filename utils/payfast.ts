@@ -5,7 +5,7 @@ export interface PayFastData {
   merchant_key: string;
   amount: string;
   item_name: string;
-  item_description: string;
+  item_description?: string;
   name_first: string;
   name_last: string;
   email_address: string;
@@ -13,6 +13,11 @@ export interface PayFastData {
   custom_str1?: string;
   custom_str2?: string;
   custom_str3?: string;
+  custom_int1?: string;
+  custom_int2?: string;
+  custom_int3?: string;
+  custom_int4?: string;
+  custom_int5?: string;
   return_url: string;
   cancel_url: string;
   notify_url: string;
@@ -24,32 +29,65 @@ export const PAYFAST_URLS = {
 };
 
 export async function generateSignature(data: PayFastData, passphrase?: string): Promise<string> {
-  // PayFast signature generation according to official docs
+  // PayFast signature generation per official documentation
+  // Reference: https://developers.payfast.co.za/docs
+  // IMPORTANT: Use NATURAL ORDER, not alphabetical (that's for API, not forms)
+  
   const params: string[] = [];
   
-  // Get all parameters except signature, sort alphabetically
-  Object.keys(data)
-    .filter(key => key !== 'signature')
-    .sort()
-    .forEach(key => {
-      const value = data[key as keyof PayFastData];
-      if (value !== undefined && value !== null && value !== '') {
-        // URL encode the value for signature generation
-        params.push(`${key}=${encodeURIComponent(value)}`);
-      }
-    });
+  // Define the correct order as per PayFast documentation
+  const fieldOrder = [
+    'merchant_id',
+    'merchant_key', 
+    'return_url',
+    'cancel_url',
+    'notify_url',
+    'name_first',
+    'name_last',
+    'email_address',
+    'm_payment_id',
+    'amount',
+    'item_name',
+    'item_description',
+    'custom_str1',
+    'custom_str2', 
+    'custom_str3',
+    'custom_int1',
+    'custom_int2',
+    'custom_int3',
+    'custom_int4',
+    'custom_int5'
+  ];
+  
+  // Process fields in the correct order, exclude empty values
+  fieldOrder.forEach(key => {
+    const value = data[key as keyof PayFastData];
+    // Only include non-empty values (PayFast requirement)
+    if (value !== undefined && value !== null && String(value).trim() !== '') {
+      // URL encode the value as per PayFast requirements
+      // PayFast requires spaces as '+' and uppercase hex encoding
+      const encodedValue = encodeURIComponent(String(value).trim())
+        .replace(/%20/g, '+')  // Replace %20 with + for spaces
+        .replace(/%([0-9A-F]{2})/g, (match, hex) => `%${hex.toUpperCase()}`); // Uppercase hex
+      params.push(`${key}=${encodedValue}`);
+    }
+  });
 
   // Create parameter string
   let paramString = params.join('&');
   
-  // Add passphrase if provided
+  // Add passphrase at the end if provided (URL encoded)
   if (passphrase && passphrase.trim() !== '') {
-    paramString += `&passphrase=${encodeURIComponent(passphrase)}`;
+    const encodedPassphrase = encodeURIComponent(passphrase.trim())
+      .replace(/%20/g, '+')  // Replace %20 with + for spaces
+      .replace(/%([0-9A-F]{2})/g, (match, hex) => `%${hex.toUpperCase()}`); // Uppercase hex
+    paramString += `&passphrase=${encodedPassphrase}`;
   }
   
   console.log('PayFast signature string:', paramString);
+  console.log('PayFast signature string length:', paramString.length);
   
-  // Generate MD5 hash
+  // Generate MD5 hash (PayFast uses MD5)
   const signature = await Crypto.digestStringAsync(
     Crypto.CryptoDigestAlgorithm.MD5,
     paramString
@@ -78,11 +116,15 @@ export async function generatePayFastForm(paymentData: PayFastData, passphrase: 
     const baseUrl = isSandbox ? PAYFAST_URLS.sandbox : PAYFAST_URLS.live;
     console.log('Using PayFast URL:', baseUrl);
 
-    // Create query string with URL encoding
+    // Create query string with PayFast-specific URL encoding
     const queryString = Object.keys(dataWithSignature)
       .map(key => {
         const value = dataWithSignature[key as keyof typeof dataWithSignature];
-        return `${key}=${encodeURIComponent(value as string)}`;
+        // Use PayFast-specific encoding (spaces as +, uppercase hex)
+        const encodedValue = encodeURIComponent(value as string)
+          .replace(/%20/g, '+')  // Replace %20 with + for spaces
+          .replace(/%([0-9A-F]{2})/g, (match, hex) => `%${hex.toUpperCase()}`); // Uppercase hex
+        return `${key}=${encodedValue}`;
       })
       .join('&');
 
@@ -159,7 +201,7 @@ export async function validateSignature(
   passphrase: string
 ): Promise<boolean> {
   try {
-    const generatedSignature = await generateSignature(data as PayFastData, passphrase);
+    const generatedSignature = await generateSignature(data as unknown as PayFastData, passphrase);
     return generatedSignature === signature;
   } catch (error) {
     console.error('Error validating signature:', error);
